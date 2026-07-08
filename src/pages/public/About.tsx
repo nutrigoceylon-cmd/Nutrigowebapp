@@ -4,7 +4,7 @@ import type { Provider } from '../../types'
 import { supabase, supabaseConfigured } from '../../lib/supabase'
 
 const whyNutriGo = [
-  'Personalized meal plans designed around your goals',
+  'Fresh meals organized around your goals and routine',
   'Accurate calorie-counted meals for better results',
   'Professional nutrition advice and support',
   'Fresh, convenient meal delivery to your doorstep',
@@ -49,7 +49,7 @@ export function About() {
   const [teamMembers, setTeamMembers] = useState<Provider[]>([])
   const [stats, setStats] = useState([
     { value: '0', label: 'Active Providers', icon: Users },
-    { value: '0', label: 'Meal Plans', icon: Leaf },
+    { value: '0', label: 'Meals', icon: Leaf },
     { value: '0', label: 'Published Articles', icon: BookOpen },
     { value: '0', label: 'Podcast Episodes', icon: Headphones },
   ])
@@ -59,15 +59,15 @@ export function About() {
 
     Promise.all([
       supabase.from('providers').select('*').eq('is_active', true).order('name'),
-      supabase.from('meal_plans').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('meals').select('*', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('articles').select('*', { count: 'exact', head: true }).eq('is_published', true),
       supabase.from('podcasts').select('*', { count: 'exact', head: true }).eq('is_published', true),
-    ]).then(([providersResult, mealPlansResult, articlesResult, podcastsResult]) => {
+    ]).then(([providersResult, mealsResult, articlesResult, podcastsResult]) => {
       const providers = providersResult.data ?? []
       setTeamMembers(providers.slice(0, 4))
       setStats([
         { value: String(providers.length), label: 'Active Providers', icon: Users },
-        { value: String(mealPlansResult.count ?? 0), label: 'Meal Plans', icon: Leaf },
+        { value: String(mealsResult.count ?? 0), label: 'Meals', icon: Leaf },
         { value: String(articlesResult.count ?? 0), label: 'Published Articles', icon: BookOpen },
         { value: String(podcastsResult.count ?? 0), label: 'Podcast Episodes', icon: Headphones },
       ])

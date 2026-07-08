@@ -7,7 +7,7 @@ import { AdminLayout } from './components/layout/AdminLayout'
 import { Home } from './pages/public/Home'
 import { About } from './pages/public/About'
 import { Menu } from './pages/public/Menu'
-import { MealSelection } from './pages/public/MealSelection'
+import { Cart } from './pages/public/Cart'
 import { Checkout } from './pages/public/Checkout'
 import { OrderConfirmation } from './pages/public/OrderConfirmation'
 import { TrackOrder } from './pages/public/TrackOrder'
@@ -26,7 +26,8 @@ import { SessionDetail } from './pages/public/SessionDetail'
 // Admin pages
 import { AdminDashboard } from './pages/admin/Dashboard'
 import { AdminUsers } from './pages/admin/Users'
-import { AdminMealPlans } from './pages/admin/MealPlans'
+import { AdminMeals } from './pages/admin/Meals'
+import { AdminAddOns } from './pages/admin/AddOns'
 import { AdminOrders } from './pages/admin/Orders'
 import { AdminOrderDetail } from './pages/admin/OrderDetail'
 import { AdminSubscriptions } from './pages/admin/Subscriptions'
@@ -57,8 +58,9 @@ function AppRoutes() {
       <Route path="/" element={<PublicPage><Home /></PublicPage>} />
       <Route path="/about" element={<PublicPage><About /></PublicPage>} />
       <Route path="/menu" element={<PublicPage><Menu /></PublicPage>} />
+      <Route path="/cart" element={<PublicPage><Cart /></PublicPage>} />
       {/* Order flow – no layout wrapper so these pages control their own chrome */}
-      <Route path="/meal-selection/:planId" element={<PublicPage><MealSelection /></PublicPage>} />
+      <Route path="/meal-selection/:planId" element={<Navigate to="/menu" replace />} />
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/order-confirmation/:orderNumber" element={<PublicPage><OrderConfirmation /></PublicPage>} />
       <Route path="/track-order" element={<PublicPage><TrackOrder /></PublicPage>} />
@@ -93,12 +95,17 @@ function AppRoutes() {
       } />
       <Route path="/admin/meal-plans" element={
         <ProtectedRoute requireAdmin>
-          <AdminLayout><AdminMealPlans /></AdminLayout>
+          <Navigate to="/admin/meals" replace />
         </ProtectedRoute>
       } />
       <Route path="/admin/meals" element={
         <ProtectedRoute requireAdmin>
-          <Navigate to="/admin/meal-plans" replace />
+          <AdminLayout><AdminMeals /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/add-ons" element={
+        <ProtectedRoute requireAdmin>
+          <AdminLayout><AdminAddOns /></AdminLayout>
         </ProtectedRoute>
       } />
       <Route path="/admin/orders" element={

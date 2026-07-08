@@ -7,13 +7,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { formatCurrency } from '../../lib/helpers'
 import { notifySessionBookingWebhook } from '../../lib/sessionBookings'
-
-const specialtyLabels: Record<string, string> = {
-  nutritionist: 'Nutritionist',
-  ayurvedic_doctor: 'Ayurvedic doctor',
-  western_doctor: 'Western doctor',
-  yoga_instructor: 'Yoga instructor',
-}
+import { getProviderSpecialtyLabel } from '../../lib/providers'
 
 const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const SESSION_TYPES = ['Initial Consultation', 'Follow-up Session', 'Nutrition Assessment', 'Meal Plan Review', 'Fitness Assessment']
@@ -128,7 +122,7 @@ export function SessionDetail() {
         bookingId: data.id,
         providerId: currentProvider.id,
         providerName: currentProvider.name,
-        providerSpecialty: specialtyLabels[currentProvider.specialty] ?? currentProvider.specialty,
+        providerSpecialty: getProviderSpecialtyLabel(currentProvider.specialty),
         sessionType,
         bookingDate: selectedDate,
         startTime: selectedTime,
@@ -186,7 +180,7 @@ export function SessionDetail() {
             <div className="p-6">
               <h2 className="font-serif text-xl font-bold text-primary mb-0.5">{provider.name}</h2>
               <p className="text-gold text-sm font-medium mb-1">{provider.title}</p>
-              <p className="text-xs text-gray-500 mb-4">{specialtyLabels[provider.specialty] ?? provider.specialty}</p>
+              <p className="text-xs text-gray-500 mb-4">{getProviderSpecialtyLabel(provider.specialty)}</p>
 
               {provider.bio && <p className="text-gray-500 text-sm leading-relaxed mb-5">{provider.bio}</p>}
 

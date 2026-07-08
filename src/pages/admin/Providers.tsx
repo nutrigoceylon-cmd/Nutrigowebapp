@@ -9,18 +9,12 @@ import { Modal } from '../../components/ui/Modal'
 import { Input, Select, Textarea } from '../../components/ui/Input'
 import { StatusBadge } from '../../components/ui/Badge'
 import { formatCurrency } from '../../lib/helpers'
+import { getProviderSpecialtyLabel, normalizeProviderSpecialty, providerSpecialties } from '../../lib/providers'
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-const specialties: { value: ProviderSpecialty; label: string }[] = [
-  { value: 'nutritionist', label: 'Nutritionist' },
-  { value: 'ayurvedic_doctor', label: 'Ayurvedic doctor' },
-  { value: 'western_doctor', label: 'Western doctor' },
-  { value: 'yoga_instructor', label: 'Yoga instructor' },
-]
-
 const defaultForm = {
-  name: '', title: '', specialty: 'nutritionist' as ProviderSpecialty,
+  name: '', title: '', specialty: 'dietician' as ProviderSpecialty,
   bio: '', image_url: '', session_price: 50, session_duration: 60,
   available_days: [1, 2, 3, 4, 5], available_from: '09:00', available_to: '17:00',
   languages: 'English', qualifications: '',
@@ -48,7 +42,7 @@ export function AdminProviders() {
   function openEdit(p: Provider) {
     setEditing(p)
     setForm({
-      name: p.name, title: p.title, specialty: p.specialty,
+      name: p.name, title: p.title, specialty: normalizeProviderSpecialty(p.specialty),
       bio: p.bio ?? '', image_url: p.image_url ?? '',
       session_price: p.session_price, session_duration: p.session_duration,
       available_days: p.available_days, available_from: p.available_from,
@@ -101,8 +95,6 @@ export function AdminProviders() {
     }))
   }
 
-  const specialtyLabel = (s: string) => specialties.find(x => x.value === s)?.label ?? s
-
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -127,7 +119,7 @@ export function AdminProviders() {
               </div>
             ),
           },
-          { key: 'specialty', label: 'Category', render: p => <span className="text-sm text-gray-600">{specialtyLabel(p.specialty)}</span> },
+          { key: 'specialty', label: 'Category', render: p => <span className="text-sm text-gray-600">{getProviderSpecialtyLabel(p.specialty)}</span> },
           { key: 'session_price', label: 'Price/Session', render: p => <span className="font-semibold text-primary">{formatCurrency(p.session_price)}</span> },
           { key: 'session_duration', label: 'Duration', render: p => <span className="text-sm text-gray-600">{p.session_duration} min</span> },
           { key: 'is_active', label: 'Status', render: p => <StatusBadge status={p.is_active ? 'active' : 'cancelled'} /> },
@@ -153,7 +145,7 @@ export function AdminProviders() {
             <Input label="Title / Credential" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Registered Dietitian, MSc" />
           </div>
           <Select label="Specialty" value={form.specialty} onChange={e => setForm(f => ({ ...f, specialty: e.target.value as ProviderSpecialty }))}
-            options={specialties}
+            options={providerSpecialties}
           />
           <Textarea label="Bio" value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} rows={3} placeholder="Brief professional background..." />
           <ImageUpload

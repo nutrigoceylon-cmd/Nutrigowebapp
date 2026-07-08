@@ -1,8 +1,15 @@
 import { MessageCircle } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import { OrderNowButton } from '../delivery/OrderNowButton'
 import { buildWhatsAppUrl } from '../../lib/site'
 
 export function FloatingActions() {
+  const { pathname } = useLocation()
+
+  if (pathname !== '/') {
+    return null
+  }
+
   return (
     <div className="fixed right-4 bottom-5 z-50 flex flex-col gap-3 sm:right-6 sm:bottom-6">
       <OrderNowButton />

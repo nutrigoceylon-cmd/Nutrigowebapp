@@ -40,7 +40,7 @@ export function OrderConfirmation() {
       <div className="min-h-screen flex items-center justify-center text-center px-4">
         <div>
           <p className="text-gray-400 mb-4">Order not found.</p>
-          <Link to="/menu" className="text-gold hover:underline">Browse meal plans</Link>
+          <Link to="/menu" className="text-gold hover:underline">Browse meals</Link>
         </div>
       </div>
     )
@@ -95,14 +95,14 @@ export function OrderConfirmation() {
           )}
         </div>
 
-        {/* Plan & meals */}
+        {/* Order items */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
           <div className="flex items-center gap-2 mb-4">
             <Package size={17} className="text-gold" />
             <h3 className="font-semibold text-gray-900">Your Order</h3>
           </div>
           <div className="bg-light-olive/50 rounded-xl p-3 mb-3">
-            <p className="font-semibold text-primary">{order.meal_plan_name}</p>
+            <p className="font-semibold text-primary">{order.meal_plan_name || 'Selected meals'}</p>
           </div>
           {(order.items ?? []).length > 0 && (
             <div className="space-y-2">

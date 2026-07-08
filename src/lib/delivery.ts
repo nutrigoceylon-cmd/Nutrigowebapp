@@ -34,14 +34,46 @@ export const DELIVERY_SETTINGS = {
   },
   zones: [
     {
-      id: 'colombo-central',
-      name: 'Colombo Central',
-      // Replace these coordinates with your actual delivery center if needed.
+      id: 'kahathuduwa-area',
+      name: 'Kahathuduwa Area',
+      // Covers: Kahathuduwa, Polgasowita, Kesbewa, Piliyandala,
+      // Kiriwattuduwa, Diyagama, Mattegoda, and Gonapola.
       center: {
-        lat: 7.2519,
-        lng: 80.4453,
+        lat: 6.785,
+        lng: 79.978,
       },
-      radiusKm: 1,
+      radiusKm: 8.5,
+    },
+    {
+      id: 'moratuwa-area',
+      name: 'Moratuwa Area',
+      // Covers: Moratumulla, Katubedda, Rawathawatta, Molpe,
+      // Borupana, Thelawala, Angulana, and the southern part of Rathmalana.
+      center: {
+        lat: 6.7989,
+        lng: 79.8767,
+      },
+      radiusKm: 4.8,
+    },
+    {
+      id: 'mawanella-area',
+      name: 'Mawanella Area',
+      // Covers Mawanella and nearby places within 15 km.
+      center: {
+        lat: 7.2513,
+        lng: 80.4435,
+      },
+      radiusKm: 15,
+    },
+    {
+      id: 'hemmathagama-area',
+      name: 'Hemmathagama Area',
+      // Covers Hemmathagama and nearby places within 15 km.
+      center: {
+        lat: 7.1686,
+        lng: 80.4982,
+      },
+      radiusKm: 15,
     },
   ] satisfies DeliveryZone[],
 } as const
@@ -144,4 +176,3 @@ export function cacheSuccessfulDeliveryValidation(zoneId: string, now = Date.now
 
   window.localStorage.setItem(DELIVERY_CACHE_KEY, JSON.stringify(payload))
 }
-

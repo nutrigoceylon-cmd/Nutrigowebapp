@@ -139,11 +139,16 @@ export interface MealPlan {
 
 export interface Meal {
   id: string
-  meal_plan_id: string
+  meal_plan_id?: string | null
   name: string
+  category?: string
   description: string
   image_url?: string
   calories: number
+  calories_min?: number | null
+  calories_max?: number | null
+  price?: number | null
+  discount_price?: number | null
   protein: number
   carbs: number
   fat: number
@@ -153,6 +158,17 @@ export interface Meal {
   meal_type: MealType
   day_of_week: number
   prep_time: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface AddOn {
+  id: string
+  name: string
+  description?: string | null
+  image_url?: string | null
+  price: number
   is_active: boolean
   created_at: string
   updated_at: string
