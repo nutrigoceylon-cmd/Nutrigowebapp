@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Leaf, ShieldCheck, ChevronRight, BookOpen, Headphones, CalendarDays, Calculator, Users, Clock, BadgeCheck, ChefHat, Truck, Phone, Flame, MapPin } from 'lucide-react'
-import heroImg from '../../assets/hero.jpeg'
+import heroImg from '../../assets/heroimage.png'
 import { OrderNowButton } from '../../components/delivery/OrderNowButton'
 import { supabase, supabaseConfigured } from '../../lib/supabase'
 import type { Article, Event, Meal, Podcast, Provider } from '../../types'
