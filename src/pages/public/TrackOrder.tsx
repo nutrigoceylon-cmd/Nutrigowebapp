@@ -218,8 +218,8 @@ export function TrackOrder() {
               <h3 className="font-semibold text-gray-900 mb-4">Order Details</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex gap-3">
-                  <span className="text-gray-400 w-32 flex-shrink-0">Plan</span>
-                  <span className="font-medium text-gray-800">{order.meal_plan_name}</span>
+                  <span className="text-gray-400 w-32 flex-shrink-0">Selection</span>
+                  <span className="font-medium text-gray-800">{order.meal_plan_name || 'Selected meals'}</span>
                 </div>
                 {(order.items ?? []).length > 0 && (
                   <div className="flex gap-3">
@@ -329,7 +329,7 @@ export function TrackOrder() {
                 >
                   <div>
                     <p className="font-mono font-semibold text-primary text-sm">{o.order_number}</p>
-                    <p className="text-gray-400 text-xs">{o.meal_plan_name} · {formatDate(o.preferred_delivery_date)}</p>
+                    <p className="text-gray-400 text-xs">{o.meal_plan_name || 'Selected meals'} · {formatDate(o.preferred_delivery_date)}</p>
                   </div>
                   <div className="text-right">
                     <StatusBadge status={o.checkout_status} />

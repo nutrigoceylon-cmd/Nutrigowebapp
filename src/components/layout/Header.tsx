@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, X, User, LogOut, LayoutDashboard } from 'lucide-react'
+import { Menu, X, User, LogOut, LayoutDashboard, ShoppingCart } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { BrandLogo } from './BrandLogo'
+import { CART_UPDATED_EVENT, getCartCount, readCart } from '../../lib/cart'
 
 const navLinks = [
   { to: '/about', label: 'About Us' },
@@ -16,9 +17,23 @@ const navLinks = [
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
   const { user, profile, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const syncCart = () => setCartCount(getCartCount(readCart()))
+
+    syncCart()
+    window.addEventListener('storage', syncCart)
+    window.addEventListener(CART_UPDATED_EVENT, syncCart)
+
+    return () => {
+      window.removeEventListener('storage', syncCart)
+      window.removeEventListener(CART_UPDATED_EVENT, syncCart)
+    }
+  }, [])
 
   const handleSignOut = async () => {
     await signOut()
@@ -54,6 +69,21 @@ export function Header() {
 
           {/* Auth area */}
           <div className="hidden md:flex items-center gap-3">
+            <Link
+              to="/cart"
+              className={`relative inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${
+                location.pathname === '/cart'
+                  ? 'border-accent bg-light-green text-accent'
+                  : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary'
+              }`}
+            >
+              <ShoppingCart size={18} />
+              {cartCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
             {user ? (
               <div className="relative">
                 <button
@@ -116,12 +146,25 @@ export function Header() {
           </div>
 
           {/* Mobile toggle */}
-          <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer text-gray-700"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          <div className="md:hidden flex items-center gap-2">
+            <Link
+              to="/cart"
+              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
+            >
+              <ShoppingCart size={21} />
+              {cartCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+            <button
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer text-gray-700"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </div>
       </div>
 

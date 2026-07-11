@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Leaf, ShieldCheck, ChevronRight, BookOpen, Headphones, CalendarDays, Calculator, Users, Clock, BadgeCheck, ChefHat, Truck, Phone, Flame, MapPin } from 'lucide-react'
-import heroImg from '../../assets/hero.jpeg'
+import heroImg from '../../assets/heroimage.png'
 import { OrderNowButton } from '../../components/delivery/OrderNowButton'
 import { supabase, supabaseConfigured } from '../../lib/supabase'
-import type { Article, Event, MealPlan, Podcast, Provider } from '../../types'
-import { formatCurrency, formatDateShort, getGoalLabel } from '../../lib/helpers'
+import type { Article, Event, Meal, Podcast, Provider } from '../../types'
+import { formatCurrency, formatDateShort } from '../../lib/helpers'
+import { deriveMealCategory, formatMealCalories, getMealCategoryLabel, getMealPrice, hasMealDiscount } from '../../lib/meals'
+import { getProviderSpecialtyLabel, normalizeProviderSpecialty } from '../../lib/providers'
+import { buildWhatsAppUrl } from '../../lib/site'
 
 const steps = [
   { icon: '🎯', num: '1', title: 'Choose Your Goal', desc: 'Select your goal: Weight Loss, Muscle Gain or Healthy Lifestyle.' },
-  { icon: '📋', num: '2', title: 'Select Your Plan', desc: 'Pick a plan that suits you. Customize if needed.' },
+  { icon: '📋', num: '2', title: 'Select Your Meals', desc: 'Browse meals by category, calorie range, and current price.' },
   { icon: '🍳', num: '3', title: 'We Prepare & Deliver', desc: 'Our chefs prepare your meals fresh and deliver to your door.' },
   { icon: '📊', num: '4', title: 'Track & Achieve', desc: 'Track your progress with our tools and expert support.' },
 ]
 
-const planColors: Record<string, { title: string; icon: string; border: string; bg: string }> = {
-  weight_loss: { title: 'text-accent', icon: '🏃', border: 'border-accent/20', bg: 'bg-accent/5' },
-  muscle_gain: { title: 'text-blue-600', icon: '💪', border: 'border-blue-200', bg: 'bg-blue-50/50' },
-  healthy_lifestyle: { title: 'text-orange-500', icon: '🥗', border: 'border-orange-200', bg: 'bg-orange-50/50' },
+const mealCategoryIcons: Record<string, string> = {
+  mains: '🍽️',
+  salads: '🥗',
+  drinks: '🥤',
+  sandwiches: '🥪',
+  'oates-bowls': '🥣',
+  soup: '🍲',
 }
 
 const activityMultipliers: Record<string, { label: string; value: number }> = {
@@ -26,13 +32,6 @@ const activityMultipliers: Record<string, { label: string; value: number }> = {
   moderately_active:{ label: 'Moderately active (3–5 days/wk)', value: 1.55 },
   very_active:      { label: 'Very active (6–7 days/wk)', value: 1.725 },
   extra_active:     { label: 'Extra active (athlete/physical job)', value: 1.9 },
-}
-
-const specialtyLabels: Record<string, string> = {
-  nutritionist: 'Nutritionist',
-  ayurvedic_doctor: 'Ayurvedic doctor',
-  western_doctor: 'Western doctor',
-  yoga_instructor: 'Yoga instructor',
 }
 
 const sessionHeroImage = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=1200&q=80'
@@ -45,13 +44,13 @@ function calcTDEE(age: number, gender: 'male' | 'female', heightCm: number, weig
 }
 
 export function Home() {
-  const [featuredPlans, setFeaturedPlans] = useState<MealPlan[]>([])
+  const [featuredMeals, setFeaturedMeals] = useState<Meal[]>([])
   const [featuredArticles, setFeaturedArticles] = useState<Article[]>([])
   const [featuredPodcast, setFeaturedPodcast] = useState<Podcast | null>(null)
   const [featuredEvent, setFeaturedEvent] = useState<Event | null>(null)
   const [providers, setProviders] = useState<Provider[]>([])
-  const [mealPlanCount, setMealPlanCount] = useState(0)
-  const [minPlanCalories, setMinPlanCalories] = useState<number | null>(null)
+  const [mealCount, setMealCount] = useState(0)
+  const [minMealCalories, setMinMealCalories] = useState<number | null>(null)
 
   const [calc, setCalc] = useState({ age: '', gender: 'male' as 'male' | 'female', height: '', weight: '', activity: 'moderately_active' })
   const [tdee, setTdee] = useState<number | null>(null)
@@ -59,20 +58,20 @@ export function Home() {
   useEffect(() => {
     if (!supabaseConfigured) return
     Promise.all([
-      supabase.from('meal_plans').select('*').eq('is_active', true).order('created_at'),
+      supabase.from('meals').select('*').eq('is_active', true).order('created_at', { ascending: false }),
       supabase.from('articles').select('*').eq('is_published', true).order('published_at', { ascending: false }).limit(2),
       supabase.from('podcasts').select('*').eq('is_published', true).order('published_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('events').select('*').in('status', ['upcoming', 'ongoing']).order('start_date').limit(1).maybeSingle(),
       supabase.from('providers').select('*').eq('is_active', true).order('name'),
-    ]).then(([plansResult, articlesResult, podcastResult, eventResult, providersResult]) => {
-      const plans = plansResult.data ?? []
-      setFeaturedPlans(plans.slice(0, 3))
+    ]).then(([mealsResult, articlesResult, podcastResult, eventResult, providersResult]) => {
+      const meals = mealsResult.data ?? []
+      setFeaturedMeals(meals.slice(0, 3))
       setFeaturedArticles(articlesResult.data ?? [])
       setFeaturedPodcast(podcastResult.data ?? null)
       setFeaturedEvent(eventResult.data ?? null)
       setProviders(providersResult.data ?? [])
-      setMealPlanCount(plans.length)
-      setMinPlanCalories(plans.length > 0 ? Math.min(...plans.map(plan => plan.calories_per_day)) : null)
+      setMealCount(meals.length)
+      setMinMealCalories(meals.length > 0 ? Math.min(...meals.map(meal => meal.calories_min ?? meal.calories)) : null)
     })
   }, [])
 
@@ -91,11 +90,10 @@ export function Home() {
   const featuredProviders = providers.slice(0, 4)
   const primaryProvider = featuredProviders[0] ?? null
   const providerCount = providers.length
-  const specialtyCount = new Set(providers.map(provider => provider.specialty)).size
+  const specialtyCount = new Set(providers.map(provider => normalizeProviderSpecialty(provider.specialty))).size
   const providerMinPrice = providers.length > 0 ? Math.min(...providers.map(provider => provider.session_price)) : null
   const featuredArticle = featuredArticles[0] ?? null
   const moreArticles = featuredArticles.slice(1)
-  const mealPlanTarget = (planId: string) => `/meal-selection/${planId}`
 
   return (
     <div className="bg-white">
@@ -111,15 +109,12 @@ export function Home() {
               </div>
               <h1 className="font-serif text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-5">
                 Fresh Healthy Meals,<br />
-                <span
-                  className="text-accent"
-                  style={{ textDecoration: 'underline', textDecorationColor: '#D97706', textDecorationStyle: 'wavy', textDecorationThickness: '3px', textUnderlineOffset: '8px' }}
-                >
+                <span className="text-accent">
                   Made for Your Goals
                 </span>
               </h1>
               <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-md">
-                Chef-prepared, calorie-balanced meals delivered fresh across Sri Lanka. Choose your goal, pick your plan, and eat healthy without the stress.
+                Chef-prepared, calorie-balanced meals delivered fresh across Sri Lanka. Choose your goal, pick your meals, and eat healthy without the stress.
               </p>
 
               {/* Buttons */}
@@ -132,6 +127,14 @@ export function Home() {
                 >
                   Order Today
                 </OrderNowButton>
+                <a
+                  href={buildWhatsAppUrl('Hi NutriGo! I would like to place an order.')}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1fba57] text-white font-semibold px-6 py-3.5 rounded-xl transition-colors shadow-md text-sm"
+                >
+                  WhatsApp <Phone size={16} />
+                </a>
                 <Link
                   to="/sessions"
                   className="inline-flex items-center gap-2 border border-gray-300 hover:border-primary text-gray-700 hover:text-primary font-medium px-6 py-3.5 rounded-xl transition-colors text-sm"
@@ -173,9 +176,9 @@ export function Home() {
                       <Flame size={17} className="text-orange-500" />
                     </div>
                     <div>
-                      <p className="text-[11px] text-gray-400 leading-none mb-0.5">Plans from</p>
+                      <p className="text-[11px] text-gray-400 leading-none mb-0.5">Meals from</p>
                       <p className="font-bold text-gray-900 text-xl leading-none">
-                        {minPlanCalories ?? '--'} <span className="text-xs font-normal text-gray-400">kcal</span>
+                        {minMealCalories ?? '--'} <span className="text-xs font-normal text-gray-400">kcal</span>
                       </p>
                     </div>
                   </div>
@@ -189,8 +192,8 @@ export function Home() {
                     <Users size={16} className="text-accent" />
                   </div>
                   <div>
-                    <p className="text-xl font-bold text-gray-900 leading-none">{mealPlanCount}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Active Meal Plans</p>
+                    <p className="text-xl font-bold text-gray-900 leading-none">{mealCount}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Available Meals</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
@@ -211,7 +214,7 @@ export function Home() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-accent mb-1">Quick Action</p>
                   <h3 className="font-bold text-xl text-gray-900 mb-1.5">Order Meal</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">Choose a fresh meal plan and start your delivery in just a few steps.</p>
+                  <p className="text-sm text-gray-500 leading-relaxed">Choose fresh meals and start your delivery in just a few steps.</p>
                 </div>
               </div>
               <OrderNowButton
@@ -245,20 +248,20 @@ export function Home() {
             </div>
 
             {/* Calorie Calculator */}
-            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-accent/15 bg-light-green p-6 shadow-sm">
               <div className="flex items-start gap-4 mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <Calculator size={26} className="text-blue-500" />
+                <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Calculator size={26} className="text-[#25D366]" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-blue-500 mb-1">Nutrition Tool</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#25D366] mb-1">Nutrition Tool</p>
                   <h3 className="font-bold text-xl text-gray-900 mb-1.5">Go to Calorie Calculator</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">Find your daily calorie need before choosing your meal plan.</p>
+                  <p className="text-sm text-gray-500 leading-relaxed">Find your daily calorie need before choosing your meals.</p>
                 </div>
               </div>
               <a
                 href="#calorie-calculator"
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
+                className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1fba57] text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-lg shadow-[#25D366]/20"
               >
                 Calculate Calories <ArrowRight size={16} />
               </a>
@@ -297,54 +300,73 @@ export function Home() {
         </div>
       </section>
 
-      {/* ── MEAL PLANS ── */}
+      {/* ── FEATURED MEALS ── */}
       <section className="py-20 bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-12">
             <div>
               <h2 className="font-serif text-3xl sm:text-4xl font-bold text-gray-900">
-                Choose a <span className="text-accent">Meal Plan</span>
+                Browse <span className="text-accent">Featured Meals</span>
               </h2>
             </div>
             <Link to="/menu" className="hidden sm:flex items-center gap-1.5 text-accent font-medium hover:text-accent-dark transition-colors text-sm">
-              View All Plans <ChevronRight size={16} />
+              View All Meals <ChevronRight size={16} />
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredPlans.map(plan => {
-              const style = planColors[plan.goal_type] ?? planColors.healthy_lifestyle
+            {featuredMeals.map(meal => {
+              const category = deriveMealCategory(meal)
+              const displayPrice = getMealPrice(meal)
+              const discounted = hasMealDiscount(meal)
               return (
-                <div key={plan.id} className={`bg-white rounded-2xl overflow-hidden border ${style.border} shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200`}>
+                <div key={meal.id} className="bg-white rounded-2xl overflow-hidden border border-accent/15 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
                   <div className="relative h-48 overflow-hidden">
-                    <img src={plan.image_url} alt={plan.name} className="w-full h-full object-cover" />
+                    {meal.image_url
+                      ? <img src={meal.image_url} alt={meal.name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full bg-light-olive/50 flex items-center justify-center text-5xl">{mealCategoryIcons[category] ?? '🍽️'}</div>
+                    }
                     <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-semibold flex items-center gap-1.5 border border-gray-100">
-                      <span>{style.icon}</span>
-                      <span className={style.title}>{getGoalLabel(plan.goal_type)}</span>
+                      <span>{mealCategoryIcons[category] ?? '🍽️'}</span>
+                      <span className="text-accent">{getMealCategoryLabel(category)}</span>
                     </div>
-                  </div>
-                  <div className={`p-5 ${style.bg}`}>
-                    <h3 className={`font-semibold text-lg mb-2 ${style.title}`}>{getGoalLabel(plan.goal_type)} Plan</h3>
-                    <p className="text-gray-500 text-sm leading-relaxed mb-4">{plan.description.slice(0, 95)}...</p>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-sm text-gray-400">
-                        <span className="font-semibold text-gray-700">{plan.calories_per_day}</span> cal/day
+                    {discounted && (
+                      <div className="absolute top-3 right-3 rounded-full bg-[#25D366] px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
+                        Discount
                       </div>
-                      <span className="font-bold text-gray-900 text-lg">{formatCurrency(plan.price)}<span className="text-xs font-normal text-gray-400">/wk</span></span>
+                    )}
+                  </div>
+                  <div className="p-5 bg-light-green/40">
+                    <h3 className="font-semibold text-lg mb-2 text-primary">{meal.name}</h3>
+                    <p className="text-gray-500 text-sm leading-relaxed mb-4">{meal.description?.slice(0, 95) || 'Freshly prepared and ready to order.'}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-sm text-gray-400">{formatMealCalories(meal)}</div>
+                      <div className="text-right">
+                        {displayPrice != null ? (
+                          <>
+                            <span className="font-bold text-gray-900 text-lg">{formatCurrency(displayPrice)}</span>
+                            {discounted && meal.price != null && (
+                              <p className="text-xs text-gray-400 line-through">{formatCurrency(meal.price)}</p>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-sm text-gray-400">Price on request</span>
+                        )}
+                      </div>
                     </div>
                     <Link
-                      to={mealPlanTarget(plan.id)}
+                      to="/menu"
                       className="block w-full text-center border border-gray-200 hover:border-primary text-gray-600 hover:text-primary py-2.5 rounded-xl text-sm font-medium transition-colors bg-white"
                     >
-                      See Menu
+                      View Meal
                     </Link>
                   </div>
                 </div>
               )
             })}
           </div>
-          {featuredPlans.length === 0 && (
+          {featuredMeals.length === 0 && (
             <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500">
-              No meal plans have been published yet.
+              No meals have been published yet.
             </div>
           )}
         </div>
@@ -365,7 +387,7 @@ export function Home() {
                 <span className="text-accent">From Real Experts</span>
               </h2>
               <p className="text-gray-500 leading-relaxed mb-7">
-                Go beyond meal plans. Book private sessions with certified nutritionists, dietitians, and wellness coaches. Get a strategy built around your body, lifestyle, and goals.
+                Go beyond choosing meals. Book private sessions with certified dieticians, Ayurvedic consultants, clinical nutrition consultants, fitness instructors, and yoga instructors.
               </p>
 
               <div className="space-y-2 mb-8">
@@ -381,7 +403,7 @@ export function Home() {
                     <div>
                       <p className="font-semibold text-gray-900 text-sm group-hover:text-accent transition-colors">{provider.name}</p>
                       <p className="text-gray-400 text-xs leading-relaxed mt-0.5">
-                        {provider.title || specialtyLabels[provider.specialty] || provider.specialty}
+                        {provider.title || getProviderSpecialtyLabel(provider.specialty)}
                       </p>
                     </div>
                     <div className="ml-auto text-right">
@@ -633,7 +655,7 @@ export function Home() {
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-gray-900">
               Calorie <span className="text-accent">Calculator</span>
             </h2>
-            <p className="text-gray-400 mt-3">Find your daily calorie needs and get a plan recommendation.</p>
+            <p className="text-gray-400 mt-3">Find your daily calorie needs and get a meal target recommendation.</p>
           </div>
 
           <div className="bg-surface rounded-3xl border border-gray-100 shadow-sm p-8">
@@ -725,7 +747,7 @@ export function Home() {
                     icon={<ArrowRight size={16} />}
                     iconPosition="end"
                   >
-                    See Recommended {goalFromTdee === 'weight_loss' ? 'Weight Loss' : goalFromTdee === 'muscle_gain' ? 'Muscle Gain' : 'Healthy Lifestyle'} Plan
+                    See Recommended {goalFromTdee === 'weight_loss' ? 'Weight Loss' : goalFromTdee === 'muscle_gain' ? 'Muscle Gain' : 'Healthy Lifestyle'} Meals
                   </OrderNowButton>
                 )}
               </div>
@@ -746,7 +768,7 @@ export function Home() {
               <p className="text-white/60 mb-2">Take the first step towards a healthier, happier you.</p>
               <div className="flex items-center gap-2 mt-4">
                 <ShieldCheck size={14} className="text-accent-light" />
-                <span className="text-white/50 text-xs">Browse live plans and book from published provider listings.</span>
+                <span className="text-white/50 text-xs">Browse live meals and book from published provider listings.</span>
               </div>
             </div>
             <div>
@@ -767,7 +789,7 @@ export function Home() {
                 </Link>
               </div>
               <p className="text-white/50 text-xs">
-                {mealPlanCount} active meal plan{mealPlanCount === 1 ? '' : 's'} and {providerCount} published expert{providerCount === 1 ? '' : 's'} available now.
+                {mealCount} active meal{mealCount === 1 ? '' : 's'} and {providerCount} published expert{providerCount === 1 ? '' : 's'} available now.
               </p>
             </div>
           </div>

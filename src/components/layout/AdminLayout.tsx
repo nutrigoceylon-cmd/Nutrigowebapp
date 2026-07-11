@@ -1,17 +1,19 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, UtensilsCrossed, ShoppingBag, CreditCard,
   Newspaper, Mic, Calendar, HelpCircle, MessageSquare, Menu, LogOut, ChevronRight,
-  Stethoscope, BookMarked,
+  Stethoscope, BookMarked, Package,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { BrandLogo } from './BrandLogo'
+import { supabase, supabaseConfigured } from '../../lib/supabase'
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/users', label: 'Users', icon: Users },
-  { to: '/admin/meal-plans', label: 'Meal Plans', icon: UtensilsCrossed },
+  { to: '/admin/meals', label: 'Meals', icon: UtensilsCrossed },
+  { to: '/admin/add-ons', label: 'Add-Ons', icon: Package },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/admin/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { to: '/admin/articles', label: 'Articles CMS', icon: Newspaper },
@@ -25,9 +27,44 @@ const navItems = [
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [pendingBookingCount, setPendingBookingCount] = useState(0)
   const location = useLocation()
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()
+
+  useEffect(() => {
+    if (!supabaseConfigured) return
+
+    let cancelled = false
+
+    async function loadPendingBookingCount() {
+      const { count } = await supabase
+        .from('session_bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+
+      if (!cancelled) {
+        setPendingBookingCount(count ?? 0)
+      }
+    }
+
+    loadPendingBookingCount()
+
+    const intervalId = window.setInterval(loadPendingBookingCount, 15000)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadPendingBookingCount()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   const handleSignOut = async () => {
     await signOut()
@@ -63,7 +100,16 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             >
               <Icon size={17} />
               {label}
-              {active && <ChevronRight size={14} className="ml-auto" />}
+              {(to === '/admin/session-bookings' || active) && (
+                <span className="ml-auto flex items-center gap-2">
+                  {to === '/admin/session-bookings' && pendingBookingCount > 0 && (
+                    <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {pendingBookingCount}
+                    </span>
+                  )}
+                  {active && <ChevronRight size={14} />}
+                </span>
+              )}
             </Link>
           )
         })}

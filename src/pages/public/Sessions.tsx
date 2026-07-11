@@ -4,22 +4,9 @@ import { Clock, DollarSign, Star, Globe, Award } from 'lucide-react'
 import type { Provider } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/helpers'
+import { getProviderSpecialtyLabel, normalizeProviderSpecialty, providerSpecialties, providerSpecialtyColors } from '../../lib/providers'
 
 const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-const specialtyLabels: Record<string, string> = {
-  nutritionist: 'Nutritionist',
-  ayurvedic_doctor: 'Ayurvedic doctor',
-  western_doctor: 'Western doctor',
-  yoga_instructor: 'Yoga instructor',
-}
-
-const specialtyColors: Record<string, string> = {
-  nutritionist: 'bg-emerald-100 text-emerald-800',
-  ayurvedic_doctor: 'bg-amber-100 text-amber-800',
-  western_doctor: 'bg-sky-100 text-sky-800',
-  yoga_instructor: 'bg-fuchsia-100 text-fuchsia-800',
-}
 
 export function Sessions() {
   const [providers, setProviders] = useState<Provider[]>([])
@@ -30,8 +17,8 @@ export function Sessions() {
       .then(({ data }) => setProviders(data ?? []))
   }, [])
 
-  const specialties = ['all', ...Array.from(new Set(providers.map(p => p.specialty)))]
-  const filtered = filter === 'all' ? providers : providers.filter(p => p.specialty === filter)
+  const specialties = ['all', ...providerSpecialties.map(item => item.value)]
+  const filtered = filter === 'all' ? providers : providers.filter(p => normalizeProviderSpecialty(p.specialty) === filter)
 
   return (
     <div>
@@ -41,7 +28,7 @@ export function Sessions() {
           <p className="text-gold font-semibold text-sm uppercase tracking-widest mb-3">Expert Care</p>
           <h1 className="font-serif text-4xl sm:text-5xl font-bold text-white mb-4">Book a Session</h1>
           <p className="text-white/60 text-lg">
-            Connect with expert nutritionists, Ayurvedic doctors, Western doctors, and yoga instructors.
+            Connect with expert dieticians, Ayurvedic consultants, clinical nutrition consultants, fitness instructors, and yoga instructors.
             Book a one-on-one session and take control of your health.
           </p>
         </div>
@@ -76,7 +63,7 @@ export function Sessions() {
                 filter === s ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary'
               }`}
             >
-              {s === 'all' ? 'All Categories' : specialtyLabels[s] ?? s}
+              {s === 'all' ? 'All' : getProviderSpecialtyLabel(s)}
             </button>
           ))}
         </div>
@@ -101,8 +88,8 @@ export function Sessions() {
                     </div>
                 }
                 <div className="absolute top-3 left-3">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${specialtyColors[provider.specialty] ?? 'bg-gray-100 text-gray-700'}`}>
-                    {specialtyLabels[provider.specialty] ?? provider.specialty}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${providerSpecialtyColors[normalizeProviderSpecialty(provider.specialty)] ?? 'bg-gray-100 text-gray-700'}`}>
+                    {getProviderSpecialtyLabel(provider.specialty)}
                   </span>
                 </div>
               </div>

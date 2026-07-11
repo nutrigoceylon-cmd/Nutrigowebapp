@@ -5,16 +5,18 @@ import {
   ArrowLeft, ShieldCheck, CreditCard, Banknote, User,
   MapPin, Lock,
 } from 'lucide-react'
-import type { MealPlan } from '../../types'
+import type { Meal, MealPlan } from '../../types'
 import { useAuth } from '../../contexts/AuthContext'
 import { createOrder } from '../../lib/orders'
-import { formatCurrency, getGoalLabel } from '../../lib/helpers'
+import { formatCurrency } from '../../lib/helpers'
 import { Button } from '../../components/ui/Button'
 import { Input, Textarea } from '../../components/ui/Input'
+import { clearCart, readCart, type CartItem } from '../../lib/cart'
+import { formatMealCalories, getMealPrice } from '../../lib/meals'
 
 interface CheckoutState {
   plan: MealPlan
-  selectedMeals: { meal: { id: string; name: string; meal_type: string; calories: number; price?: number }; quantity: number }[]
+  selectedMeals: { meal: { id: string; name: string; meal_type: string; category?: string; calories: number; calories_min?: number | null; calories_max?: number | null; price?: number | null; discount_price?: number | null }; quantity: number }[]
 }
 
 interface CheckoutForm {
@@ -49,6 +51,7 @@ export function Checkout() {
   const { user, signUp } = useAuth()
 
   const state = location.state as CheckoutState | null
+  const [cartItems, setCartItems] = useState<CartItem[]>([])
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -71,14 +74,22 @@ export function Checkout() {
 
   // Redirect if no plan state
   useEffect(() => {
-    if (!state?.plan) navigate('/menu')
+    if (state?.plan) return
+    const items = readCart()
+    setCartItems(items)
+    if (items.length === 0) navigate('/menu')
   }, [state, navigate])
 
-  if (!state?.plan) return null
+  if (!state?.plan && cartItems.length === 0) return null
 
-  const { plan, selectedMeals } = state
-  const planPrice = plan.price
-  const totalItems = selectedMeals.reduce((s, sm) => s + sm.quantity, 0)
+  const selectedMeals = state?.selectedMeals ?? cartItems
+  const plan = state?.plan ?? null
+  const orderTitle = plan?.name ?? 'Selected meals'
+  const totalItems = selectedMeals.reduce((sum, item) => sum + item.quantity, 0)
+  const totalAmount = plan?.price ?? selectedMeals.reduce((sum, item) => {
+    const price = getMealPrice(item.meal as Meal)
+    return sum + (price ?? 0) * item.quantity
+  }, 0)
 
   // Min delivery date = tomorrow
   const tomorrow = new Date()
@@ -116,16 +127,17 @@ export function Checkout() {
         preferred_delivery_date: data.preferred_delivery_date,
         preferred_delivery_time: data.preferred_delivery_time,
         special_instructions: data.special_instructions || undefined,
-        meal_plan_id: plan.id,
-        meal_plan_name: plan.name,
-        total_amount: planPrice,
+        meal_plan_id: plan?.id,
+        meal_plan_name: orderTitle,
+        total_amount: totalAmount,
         payment_method: data.payment_method,
         items: selectedMeals.map(sm => ({
           meal_id: sm.meal.id,
           meal_name: sm.meal.name,
-          meal_category: sm.meal.meal_type,
+          meal_category: sm.meal.category || sm.meal.meal_type,
           quantity: sm.quantity,
           calories: sm.meal.calories,
+          price: getMealPrice(sm.meal as Meal) ?? undefined,
         })),
       })
 
@@ -135,6 +147,7 @@ export function Checkout() {
         return
       }
 
+      if (!plan) clearCart()
       navigate(`/order-confirmation/${order.order_number}`, { state: { order } })
     } catch (err) {
       setSubmitError('Something went wrong. Please try again.')
@@ -148,7 +161,7 @@ export function Checkout() {
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
           <Link
-            to={`/meal-selection/${plan.id}`}
+            to="/menu"
             className="flex items-center gap-1.5 text-gray-500 hover:text-primary text-sm transition-colors"
           >
             <ArrowLeft size={15} /> Back
@@ -421,11 +434,10 @@ export function Checkout() {
               <div className="sticky top-20 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
                 <h3 className="font-semibold text-gray-900">Order Summary</h3>
 
-                {/* Plan */}
                 <div className="bg-light-olive/50 rounded-xl p-4">
-                  <p className="font-semibold text-primary">{plan.name}</p>
-                  <p className="text-gray-500 text-xs capitalize mt-0.5">
-                    {plan.plan_duration} · {getGoalLabel(plan.goal_type)} · {plan.calories_per_day} cal/day
+                  <p className="font-semibold text-primary">{orderTitle}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">
+                    {plan ? 'Meal selection order' : 'Cart checkout'}
                   </p>
                 </div>
 
@@ -439,7 +451,11 @@ export function Checkout() {
                       <div key={meal.id} className="flex items-center justify-between text-sm">
                         <div className="flex-1 min-w-0">
                           <p className="text-gray-800 truncate">{meal.name}</p>
-                          <p className="text-gray-400 text-xs capitalize">{meal.meal_type}</p>
+                          <p className="text-gray-400 text-xs capitalize">
+                            {meal.category || meal.meal_type}
+                            {' · '}
+                            {formatMealCalories(meal as Meal)}
+                          </p>
                         </div>
                         <span className="text-gray-500 text-xs ml-2">×{quantity}</span>
                       </div>
@@ -449,8 +465,8 @@ export function Checkout() {
 
                 <div className="border-t border-gray-100 pt-4 space-y-2 text-sm">
                   <div className="flex justify-between text-gray-500">
-                    <span>Plan price</span>
-                    <span>{formatCurrency(planPrice)}</span>
+                    <span>Items total</span>
+                    <span>{formatCurrency(totalAmount)}</span>
                   </div>
                   <div className="flex justify-between text-gray-500">
                     <span>Delivery</span>
@@ -458,7 +474,7 @@ export function Checkout() {
                   </div>
                   <div className="flex justify-between font-bold text-primary text-base pt-1 border-t border-gray-100">
                     <span>Total</span>
-                    <span>{formatCurrency(planPrice)}</span>
+                    <span>{formatCurrency(totalAmount)}</span>
                   </div>
                 </div>
 

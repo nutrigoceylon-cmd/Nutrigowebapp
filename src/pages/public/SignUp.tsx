@@ -68,7 +68,7 @@ export function SignUp() {
           </div>
           <h2 className="font-serif text-3xl font-bold text-white mb-4">Start Your Journey</h2>
           <p className="text-white/60 text-base mb-10 max-w-xs">
-            Join thousands who've transformed their health with nutritionist-designed meal plans.
+            Join thousands who've transformed their health with nutritionist-designed meals and expert support.
           </p>
           <div className="space-y-3">
             {perks.map(perk => (
