@@ -277,7 +277,7 @@ export function AdminMealPlans() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="Price ($)"
+                label="Price (LKR)"
                 type="number"
                 value={String(form.price)}
                 onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))}

@@ -8,6 +8,7 @@ import { StatusBadge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { Input, Select } from '../../components/ui/Input'
+import { notifyEventRegistrationWebhook } from '../../lib/eventRegistrations'
 
 const eventTypeIcons: Record<string, string> = {
   cooking_class: '🍳',
@@ -20,6 +21,7 @@ const eventTypeIcons: Record<string, string> = {
 export function Events() {
   const { user, profile } = useAuth()
   const [events, setEvents] = useState<Event[]>([])
+  const [registrationCounts, setRegistrationCounts] = useState<Record<string, number>>({})
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all')
   const [registerEvent, setRegisterEvent] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
@@ -35,8 +37,17 @@ export function Events() {
   })
 
   useEffect(() => {
-    supabase.from('events').select('*').order('start_date', { ascending: false })
-      .then(({ data }) => setEvents(data ?? []))
+    Promise.all([
+      supabase.from('events').select('*').order('start_date', { ascending: false }),
+      supabase.from('event_registrations').select('event_id').in('status', ['registered', 'confirmed']),
+    ]).then(([eventsResult, regsResult]) => {
+      setEvents(eventsResult.data ?? [])
+      const counts: Record<string, number> = {}
+      for (const r of regsResult.data ?? []) {
+        counts[r.event_id] = (counts[r.event_id] ?? 0) + 1
+      }
+      setRegistrationCounts(counts)
+    })
   }, [])
 
   const filtered = events.filter(e => filter === 'all' || e.status === filter)
@@ -121,6 +132,23 @@ export function Events() {
     }
 
     setRegistered(true)
+    setRegistrationCounts(prev => ({
+      ...prev,
+      [selectedEvent.id]: (prev[selectedEvent.id] ?? 0) + 1,
+    }))
+    const newCount = (registrationCounts[selectedEvent.id] ?? 0) + 1
+    const availableSpots = Math.max(0, selectedEvent.max_attendees - newCount)
+    notifyEventRegistrationWebhook({
+      eventId: selectedEvent.id,
+      eventTitle: selectedEvent.title,
+      eventDate: selectedEvent.start_date,
+      contactName: trimmedName,
+      contactPhone: trimmedPhone,
+      contactEmail: trimmedEmail,
+      attendeeAge: age,
+      attendeeGender: registrationForm.gender,
+      availableSpots,
+    }).catch(() => {})
     setTimeout(() => {
       closeRegistration()
     }, 2500)
@@ -195,10 +223,26 @@ export function Events() {
                       )}
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <Users size={13} className="text-gold flex-shrink-0" />
-                        <span>{event.max_attendees} spots available</span>
+                        {(() => {
+                          const taken = registrationCounts[event.id] ?? 0
+                          const available = Math.max(0, event.max_attendees - taken)
+                          return (
+                            <span className={available === 0 ? 'text-red-500 font-medium' : ''}>
+                              {available === 0 ? 'Fully booked' : `${available} spots available`}
+                            </span>
+                          )
+                        })()}
                       </div>
                     </div>
-                    <Button size="sm" fullWidth onClick={() => openRegistration(event.id)}>Register Now</Button>
+                    {(() => {
+                      const taken = registrationCounts[event.id] ?? 0
+                      const available = Math.max(0, event.max_attendees - taken)
+                      return (
+                        <Button size="sm" fullWidth onClick={() => openRegistration(event.id)} disabled={available === 0}>
+                          {available === 0 ? 'Fully Booked' : 'Register Now'}
+                        </Button>
+                      )
+                    })()}
                   </div>
                 </div>
               ))}

@@ -137,7 +137,7 @@ export function Home() {
                 </a>
                 <Link
                   to="/sessions"
-                  className="inline-flex items-center gap-2 border border-gray-300 hover:border-primary text-gray-700 hover:text-primary font-medium px-6 py-3.5 rounded-xl transition-colors text-sm"
+                  className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-white font-semibold px-6 py-3.5 rounded-xl transition-colors shadow-md text-sm"
                 >
                   Book a Free Nutrition Call <Phone size={16} />
                 </Link>
@@ -407,7 +407,6 @@ export function Home() {
                       </p>
                     </div>
                     <div className="ml-auto text-right">
-                      <p className="text-xs font-semibold text-primary">{formatCurrency(provider.session_price)}</p>
                       <p className="text-[11px] text-gray-400">{provider.session_duration} min</p>
                     </div>
                   </Link>

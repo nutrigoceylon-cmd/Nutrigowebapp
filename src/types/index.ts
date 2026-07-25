@@ -355,6 +355,12 @@ export interface ProviderCategory {
   updated_at: string
 }
 
+export interface TimeSlot {
+  label: string
+  from: string
+  to: string
+}
+
 export interface Provider {
   id: string
   name: string
@@ -365,8 +371,7 @@ export interface Provider {
   session_price: number
   session_duration: number
   available_days: number[]
-  available_from: string
-  available_to: string
+  time_slots: TimeSlot[]
   languages: string[]
   qualifications: string[]
   is_active: boolean

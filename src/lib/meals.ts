@@ -4,10 +4,12 @@ export const mealCategories = [
   { value: 'all', label: 'All Categories' },
   { value: 'mains', label: 'Mains' },
   { value: 'salads', label: 'Salads' },
-  { value: 'drinks', label: 'Drinks' },
   { value: 'sandwiches', label: 'Sandwiches' },
-  { value: 'oates-bowls', label: 'Oates Bowls' },
-  { value: 'soup', label: 'Soup' },
+  { value: 'oats-bowls', label: 'Oats Bowls' },
+  { value: 'soups', label: 'Soups' },
+  { value: 'snacks', label: 'Snacks' },
+  { value: 'drinks', label: 'Drinks' },
+  { value: 'desserts', label: 'Desserts' },
 ] as const
 
 export type MealCategoryValue = (typeof mealCategories)[number]['value']

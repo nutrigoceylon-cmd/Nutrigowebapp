@@ -45,7 +45,8 @@ export function Menu() {
   const [cartTotal, setCartTotal] = useState(0)
   const [cartNotice, setCartNotice] = useState<string | null>(null)
   const [deliveryValidated, setDeliveryValidated] = useState(false)
-  const [checkingDelivery, setCheckingDelivery] = useState(true)
+  const [checkingDelivery, setCheckingDelivery] = useState(false)
+  const [pendingCartAdd, setPendingCartAdd] = useState<{ meal: Meal; quantity: number } | null>(null)
   const [permissionOpen, setPermissionOpen] = useState(false)
   const [permissionState, setPermissionState] = useState<PermissionState>('requesting')
   const [permissionMessage, setPermissionMessage] = useState<string>()
@@ -61,30 +62,11 @@ export function Menu() {
     const cachedValidation = readCachedDeliveryValidation()
     if (cachedValidation) {
       setDeliveryValidated(true)
-      setCheckingDelivery(false)
-      return
     }
-
-    if (!hasConfiguredDeliveryZones()) {
-      setCheckingDelivery(false)
-      setAvailabilityState({
-        title: 'Delivery Validation Unavailable',
-        message: 'We cannot verify delivery coverage right now. Please update the delivery zone settings and try again.',
-      })
-      return
-    }
-
-    requestUserLocation()
   }, [])
 
   useEffect(() => {
     let cancelled = false
-
-    if (!deliveryValidated) {
-      setMeals([])
-      setLoading(false)
-      return () => { cancelled = true }
-    }
 
     if (!supabaseConfigured) {
       setLoading(false)
@@ -104,10 +86,8 @@ export function Menu() {
       setLoading(false)
     })
 
-    return () => {
-      cancelled = true
-    }
-  }, [deliveryValidated])
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     refreshCartSummary()
@@ -166,6 +146,15 @@ export function Menu() {
           setDeliveryValidated(true)
           setCheckingDelivery(false)
           setPermissionOpen(false)
+          setPendingCartAdd(pending => {
+            if (pending) {
+              addMealToCart(pending.meal, pending.quantity)
+              refreshCartSummary()
+              setCartNotice(`${pending.meal.name} added to cart`)
+              window.setTimeout(() => setCartNotice(c => c === `${pending.meal.name} added to cart` ? null : c), 2200)
+            }
+            return null
+          })
           return
         }
 
@@ -195,14 +184,30 @@ export function Menu() {
   }
 
   function handleAddToCart(meal: Meal, quantity = 1) {
-    addMealToCart(meal, quantity)
-    refreshCartSummary()
-    setCartNotice(`${meal.name} added to cart`)
-    window.setTimeout(() => setCartNotice(current => current === `${meal.name} added to cart` ? null : current), 2200)
+    if (deliveryValidated) {
+      addMealToCart(meal, quantity)
+      refreshCartSummary()
+      setCartNotice(`${meal.name} added to cart`)
+      window.setTimeout(() => setCartNotice(current => current === `${meal.name} added to cart` ? null : current), 2200)
+      return
+    }
+
+    setPendingCartAdd({ meal, quantity })
+
+    if (!hasConfiguredDeliveryZones()) {
+      setAvailabilityState({
+        title: 'Delivery Validation Unavailable',
+        message: 'We cannot verify delivery coverage right now. Please update the delivery zone settings and try again.',
+      })
+      return
+    }
+
+    requestUserLocation()
   }
 
   function handlePermissionCancel() {
     setPermissionOpen(false)
+    setPendingCartAdd(null)
     navigate('/')
   }
 
@@ -269,20 +274,7 @@ export function Menu() {
 
       <section className="py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {checkingDelivery ? (
-            <div className="rounded-[2rem] border border-gold/15 bg-gradient-to-br from-white via-light-olive/40 to-light-green/60 px-6 py-14 shadow-sm">
-              <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
-                <div className="relative mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/20">
-                  <span className="h-8 w-8 animate-spin rounded-full border-2 border-white/25 border-t-gold" />
-                </div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gold">Checking Delivery Area</p>
-                <h2 className="mt-2 font-serif text-3xl font-bold text-primary">Verifying your location</h2>
-                <p className="mt-3 text-sm leading-6 text-gray-500">
-                  We&apos;re confirming whether delivery is available in your area before showing the menu.
-                </p>
-              </div>
-            </div>
-          ) : loading ? (
+          {loading ? (
             <div className="rounded-[2rem] border border-gold/15 bg-gradient-to-br from-white via-light-olive/40 to-light-green/60 px-6 py-14 shadow-sm">
               <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
                 <div className="relative mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/20">
@@ -315,7 +307,7 @@ export function Menu() {
                       }
                       {discounted && (
                         <div className="absolute top-3 right-3 rounded-full bg-[#25D366] px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
-                          Discount
+                          Offer
                         </div>
                       )}
                     </div>
@@ -349,20 +341,38 @@ export function Menu() {
                         <p className="text-xs font-medium text-gray-500">{formatMealCalories(meal)}</p>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-1 text-center text-xs">
-                        <div className="bg-light-olive/50 rounded-lg p-1.5">
-                          <p className="font-bold text-primary">{meal.protein}g</p>
-                          <p className="text-gray-400">Protein</p>
-                        </div>
-                        <div className="bg-light-olive/50 rounded-lg p-1.5">
-                          <p className="font-bold text-primary">{meal.carbs}g</p>
-                          <p className="text-gray-400">Carbs</p>
-                        </div>
-                        <div className="bg-light-olive/50 rounded-lg p-1.5">
-                          <p className="font-bold text-primary">{meal.fat}g</p>
-                          <p className="text-gray-400">Fat</p>
-                        </div>
-                      </div>
+                      {(() => {
+                        const p = meal.protein ?? 0
+                        const c = meal.carbs ?? 0
+                        const f = meal.fat ?? 0
+                        const fi = meal.fiber ?? 0
+                        const total = p + c + f + fi
+                        const pct = (v: number) => total > 0 ? `${(v / total) * 100}%` : '0%'
+                        const macros = [
+                          { label: 'Protein', v: p, color: 'bg-blue-400' },
+                          { label: 'Carbs', v: c, color: 'bg-amber-400' },
+                          { label: 'Fat', v: f, color: 'bg-rose-400' },
+                          { label: 'Fiber', v: fi, color: 'bg-green-400' },
+                        ]
+                        return (
+                          <div className="space-y-1.5">
+                            <div className="flex h-2.5 rounded-full overflow-hidden gap-px">
+                              {macros.map(m => (
+                                <div key={m.label} className={`${m.color} transition-all`} style={{ width: pct(m.v) }} />
+                              ))}
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px]">
+                              {macros.map(m => (
+                                <span key={m.label} className="flex items-center gap-1">
+                                  <span className={`w-2 h-2 rounded-sm ${m.color} inline-block shrink-0`} />
+                                  <span className="text-gray-500">{m.label} (g)</span>
+                                  <span className="font-semibold text-gray-700 ml-auto">{m.v}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })()}
                       <p className="mt-3 text-center text-xs font-medium text-primary/80">
                         Tap to view details
                       </p>
@@ -424,7 +434,7 @@ export function Menu() {
                 </span>
                 {hasMealDiscount(selectedMeal) && (
                   <span className="bg-[#25D366]/95 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm">
-                    Discount
+                    Offer
                   </span>
                 )}
               </div>

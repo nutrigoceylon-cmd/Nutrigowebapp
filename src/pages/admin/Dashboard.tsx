@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Users, ShoppingBag, CreditCard, TrendingUp, ArrowUpRight } from 'lucide-react'
+import { Users, ShoppingBag, CreditCard, TrendingUp, ArrowUpRight, CalendarCheck } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import type { NutriOrder } from '../../types'
+import type { NutriOrder, EventRegistration } from '../../types'
 import { adminGetOrders } from '../../lib/orders'
 import { formatCurrency, formatDate } from '../../lib/helpers'
 import { Card } from '../../components/ui/Card'
@@ -9,20 +9,28 @@ import { StatusBadge } from '../../components/ui/Badge'
 import { AdminLineChart } from '../../components/charts/NutritionChart'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
+type EventRegWithEvent = EventRegistration & { events: { title: string; start_date: string } | null }
+
 export function AdminDashboard() {
   const [profilesCount, setProfilesCount] = useState(0)
   const [activeSubscriptions, setActiveSubscriptions] = useState(0)
   const [orders, setOrders] = useState<NutriOrder[]>([])
+  const [eventRegCount, setEventRegCount] = useState(0)
+  const [recentEventRegs, setRecentEventRegs] = useState<EventRegWithEvent[]>([])
 
   useEffect(() => {
     Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       adminGetOrders(),
-    ]).then(([profilesResult, subscriptionsResult, ordersResult]) => {
+      supabase.from('event_registrations').select('*', { count: 'exact', head: true }).eq('status', 'registered'),
+      supabase.from('event_registrations').select('*, events(title, start_date)').order('created_at', { ascending: false }).limit(5),
+    ]).then(([profilesResult, subscriptionsResult, ordersResult, eventRegCountResult, recentEventRegsResult]) => {
       setProfilesCount(profilesResult.count ?? 0)
       setActiveSubscriptions(subscriptionsResult.count ?? 0)
       setOrders(ordersResult)
+      setEventRegCount(eventRegCountResult.count ?? 0)
+      setRecentEventRegs((recentEventRegsResult.data ?? []) as EventRegWithEvent[])
     })
   }, [])
 
@@ -55,6 +63,7 @@ export function AdminDashboard() {
     { label: 'Active Subscriptions', value: activeSubscriptions.toLocaleString(), change: 'Live', icon: CreditCard, color: 'text-green-600', bg: 'bg-green-50' },
     { label: "Today's Orders", value: ordersToday.toLocaleString(), change: 'Live', icon: ShoppingBag, color: 'text-orange-600', bg: 'bg-orange-50' },
     { label: 'Monthly Revenue', value: formatCurrency(monthlyRevenue), change: 'Live', icon: TrendingUp, color: 'text-gold', bg: 'bg-gold/10' },
+    { label: 'Event Registrations', value: eventRegCount.toLocaleString(), change: 'Live', icon: CalendarCheck, color: 'text-purple-600', bg: 'bg-purple-50' },
   ]
 
   return (
@@ -65,7 +74,7 @@ export function AdminDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         {kpis.map(kpi => (
           <Card key={kpi.label} padding="md">
             <div className="flex items-start justify-between">
@@ -101,7 +110,7 @@ export function AdminDashboard() {
             data={revenueByMonth}
             label="Revenue"
             color="#AC905E"
-            prefix="$"
+            prefix="LKR "
           />
         </Card>
       </div>
@@ -142,6 +151,45 @@ export function AdminDashboard() {
           </div>
         </Card>
       </div>
+
+      {/* Recent Event Registrations */}
+      <Card>
+        <h3 className="font-semibold text-gray-900 mb-4">Recent Event Registrations</h3>
+        {recentEventRegs.length === 0 ? (
+          <p className="text-sm text-gray-400">No registrations yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                  <th className="pb-2 font-medium pr-4">Name</th>
+                  <th className="pb-2 font-medium pr-4">Email</th>
+                  <th className="pb-2 font-medium pr-4">Phone</th>
+                  <th className="pb-2 font-medium pr-4">Age</th>
+                  <th className="pb-2 font-medium pr-4">Gender</th>
+                  <th className="pb-2 font-medium pr-4">Event</th>
+                  <th className="pb-2 font-medium pr-4">Event Date</th>
+                  <th className="pb-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentEventRegs.map(reg => (
+                  <tr key={reg.id} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2.5 pr-4 font-medium text-gray-900">{reg.contact_name || '—'}</td>
+                    <td className="py-2.5 pr-4 text-gray-500">{reg.contact_email || '—'}</td>
+                    <td className="py-2.5 pr-4 text-gray-500">{reg.contact_phone || '—'}</td>
+                    <td className="py-2.5 pr-4 text-gray-500">{reg.attendee_age ?? '—'}</td>
+                    <td className="py-2.5 pr-4 text-gray-500 capitalize">{reg.attendee_gender ?? '—'}</td>
+                    <td className="py-2.5 pr-4 text-gray-700 font-medium">{reg.events?.title ?? '—'}</td>
+                    <td className="py-2.5 pr-4 text-gray-500">{reg.events?.start_date ? formatDate(reg.events.start_date) : '—'}</td>
+                    <td className="py-2.5"><StatusBadge status={reg.status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   )
 }
