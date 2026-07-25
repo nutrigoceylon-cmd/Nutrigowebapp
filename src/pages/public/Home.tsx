@@ -22,8 +22,8 @@ const mealCategoryIcons: Record<string, string> = {
   salads: '🥗',
   drinks: '🥤',
   sandwiches: '🥪',
-  'oates-bowls': '🥣',
-  soup: '🍲',
+  'oats-bowls': '🥣',
+  soups: '🍲',
 }
 
 const activityMultipliers: Record<string, { label: string; value: number }> = {
