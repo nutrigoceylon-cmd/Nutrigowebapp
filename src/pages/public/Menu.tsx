@@ -45,7 +45,7 @@ export function Menu() {
   const [cartTotal, setCartTotal] = useState(0)
   const [cartNotice, setCartNotice] = useState<string | null>(null)
   const [deliveryValidated, setDeliveryValidated] = useState(false)
-  const [checkingDelivery, setCheckingDelivery] = useState(false)
+  const [, setCheckingDelivery] = useState(false)
   const [pendingCartAdd, setPendingCartAdd] = useState<{ meal: Meal; quantity: number } | null>(null)
   const [permissionOpen, setPermissionOpen] = useState(false)
   const [permissionState, setPermissionState] = useState<PermissionState>('requesting')
