@@ -45,13 +45,13 @@ export function deriveMealCategory(meal: Pick<Meal, 'category' | 'name' | 'descr
 
 export function deriveMealTypeFromCategory(category: string): MealType {
   switch (normalizeMealCategory(category)) {
-    case 'oates-bowls':
+    case 'oats-bowls':
       return 'breakfast'
     case 'drinks':
       return 'snack'
     case 'sandwiches':
     case 'salads':
-    case 'soup':
+    case 'soups':
     case 'mains':
     default:
       return 'lunch'
