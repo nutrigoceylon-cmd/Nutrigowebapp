@@ -39,12 +39,12 @@ export function Events() {
   useEffect(() => {
     Promise.all([
       supabase.from('events').select('*').order('start_date', { ascending: false }),
-      supabase.from('event_registrations').select('event_id').in('status', ['registered', 'confirmed']),
-    ]).then(([eventsResult, regsResult]) => {
+      supabase.rpc('get_event_registration_counts'),
+    ]).then(([eventsResult, countsResult]) => {
       setEvents(eventsResult.data ?? [])
       const counts: Record<string, number> = {}
-      for (const r of regsResult.data ?? []) {
-        counts[r.event_id] = (counts[r.event_id] ?? 0) + 1
+      for (const r of (countsResult.data ?? []) as { event_id: string; count: number }[]) {
+        counts[r.event_id] = Number(r.count)
       }
       setRegistrationCounts(counts)
     })
