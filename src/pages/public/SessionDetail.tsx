@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Clock, DollarSign, Globe, Award, Calendar, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Clock, Globe, Award, Calendar, CheckCircle, Banknote } from 'lucide-react'
 import type { Provider } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -36,7 +36,7 @@ function getDayOfWeek(dateStr: string): number {
 function getNext30Days(): string[] {
   const dates: string[] = []
   const today = new Date()
-  for (let i = 1; i <= 30; i++) {
+  for (let i = 0; i <= 30; i++) {
     const d = new Date(today)
     d.setDate(today.getDate() + i)
     dates.push(d.toISOString().split('T')[0])
@@ -85,10 +85,18 @@ export function SessionDetail() {
 
   if (!provider) return null
 
+  const minBookableTime = new Date(Date.now() + 24 * 60 * 60 * 1000)
   const availableDates = getNext30Days().filter(d => provider.available_days.includes(getDayOfWeek(d)))
   const slots = selectedDate
-    ? generateSlots(provider.available_from, provider.available_to, provider.session_duration)
-        .filter(t => !bookedDates.includes(`${selectedDate}|${t}`))
+    ? (provider.time_slots ?? []).flatMap(slot =>
+        generateSlots(slot.from, slot.to, 30)
+          .filter(t => {
+            if (bookedDates.includes(`${selectedDate}|${t}`)) return false
+            const [h, m] = t.split(':').map(Number)
+            const slotDate = new Date(`${selectedDate}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`)
+            return slotDate >= minBookableTime
+          })
+      )
     : []
 
   async function handleBook() {
@@ -186,12 +194,19 @@ export function SessionDetail() {
 
               <div className="space-y-2.5 text-sm">
                 <div className="flex items-center gap-2 text-gray-600">
-                  <DollarSign size={15} className="text-gold" />
+                  <Banknote size={15} className="text-gold" />
                   <span><strong>{formatCurrency(provider.session_price)}</strong> / {provider.session_duration} min</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Clock size={15} className="text-gold" />
-                  <span>{provider.available_from} – {provider.available_to}</span>
+                <div className="flex items-start gap-2 text-gray-600">
+                  <Clock size={15} className="text-gold mt-0.5 flex-shrink-0" />
+                  <div className="flex flex-col gap-0.5">
+                    {(provider.time_slots ?? []).map((slot, i) => (
+                      <span key={i} className="text-sm">
+                        {slot.label && <span className="text-gray-400 text-xs mr-1">{slot.label}:</span>}
+                        {slot.from} – {slot.to}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 text-gray-600">
                   <Calendar size={15} className="text-gold" />
@@ -224,30 +239,7 @@ export function SessionDetail() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h3 className="font-serif text-xl font-bold text-primary mb-6">Book Your Session</h3>
 
-            {!user && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800">
-                You need to <Link to="/login" className="font-semibold underline">sign in</Link> or{' '}
-                <Link to="/signup" className="font-semibold underline">create an account</Link> to book a session.
-              </div>
-            )}
-
-            {/* Session Type */}
-            <div className="mb-5">
-              <label className="text-sm font-medium text-gray-700 block mb-2">Session Type</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {SESSION_TYPES.map(t => (
-                  <button key={t} type="button" onClick={() => setSessionType(t)}
-                    className={`px-3 py-2.5 rounded-xl text-sm font-medium border text-left transition-all cursor-pointer ${
-                      sessionType === t ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Date */}
+            {/* Step 1: Date */}
             <div className="mb-5">
               <label className="text-sm font-medium text-gray-700 block mb-2">Select Date</label>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto pr-1">
@@ -267,7 +259,7 @@ export function SessionDetail() {
               </div>
             </div>
 
-            {/* Time Slots */}
+            {/* Step 2: Time — only after date picked */}
             {selectedDate && (
               <div className="mb-5">
                 <label className="text-sm font-medium text-gray-700 block mb-2">Select Time</label>
@@ -290,80 +282,100 @@ export function SessionDetail() {
               </div>
             )}
 
-            {/* Notes */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">Your Name</label>
-                <input
-                  value={contactName}
-                  onChange={e => setContactName(e.target.value)}
-                  placeholder="Full name"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gold"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">Phone Number</label>
-                <input
-                  value={contactPhone}
-                  onChange={e => setContactPhone(e.target.value)}
-                  placeholder="07XXXXXXXX"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gold"
-                />
-              </div>
-            </div>
-
-            <div className="mb-5">
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">Email Address</label>
-              <input
-                type="email"
-                value={contactEmail}
-                onChange={e => setContactEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gold"
-              />
-            </div>
-
-            <div className="mb-6">
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">Reason / Notes <span className="text-gray-400 font-normal">(optional)</span></label>
-              <textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                rows={3}
-                placeholder="Briefly describe your health concern or what you hope to achieve..."
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gold resize-none"
-              />
-            </div>
-
-            {formError && (
-              <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {formError}
-              </div>
-            )}
-
-            {/* Summary */}
+            {/* Step 3: Details — only after date + time picked */}
             {selectedDate && selectedTime && (
-              <div className="bg-light-olive/40 border border-sage/30 rounded-xl p-4 mb-5 text-sm space-y-1">
-                <p className="font-semibold text-gray-800 mb-2">Booking Summary</p>
-                <p className="text-gray-600"><span className="text-gray-400">Provider:</span> {provider.name}</p>
-                <p className="text-gray-600"><span className="text-gray-400">Client:</span> {contactName || '—'}</p>
-                <p className="text-gray-600"><span className="text-gray-400">Phone:</span> {contactPhone || '—'}</p>
-                <p className="text-gray-600"><span className="text-gray-400">Email:</span> {contactEmail || '—'}</p>
-                <p className="text-gray-600"><span className="text-gray-400">Date:</span> {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                <p className="text-gray-600"><span className="text-gray-400">Time:</span> {selectedTime}</p>
-                <p className="text-gray-600"><span className="text-gray-400">Type:</span> {sessionType}</p>
-                <p className="font-semibold text-primary mt-2">{formatCurrency(provider.session_price)}</p>
-              </div>
-            )}
+              <>
+                {!user && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
+                    You need to <Link to="/login" className="font-semibold underline">sign in</Link> or{' '}
+                    <Link to="/signup" className="font-semibold underline">create an account</Link> to book a session.
+                  </div>
+                )}
 
-            <Button
-              fullWidth
-              size="lg"
-              onClick={handleBook}
-              loading={loading}
-              disabled={!selectedDate || !selectedTime || !user || !contactName.trim() || !contactPhone.trim() || !contactEmail.trim()}
-            >
-              {!user ? 'Sign In to Book' : 'Confirm Booking'}
-            </Button>
+                <div className="mb-5">
+                  <label className="text-sm font-medium text-gray-700 block mb-2">Session Type</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {SESSION_TYPES.map(t => (
+                      <button key={t} type="button" onClick={() => setSessionType(t)}
+                        className={`px-3 py-2.5 rounded-xl text-sm font-medium border text-left transition-all cursor-pointer ${
+                          sessionType === t ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Your Name</label>
+                    <input
+                      value={contactName}
+                      onChange={e => setContactName(e.target.value)}
+                      placeholder="Full name"
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gold"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Phone Number</label>
+                    <input
+                      value={contactPhone}
+                      onChange={e => setContactPhone(e.target.value)}
+                      placeholder="07XXXXXXXX"
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gold"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-5">
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">Email Address</label>
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={e => setContactEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div className="mb-6">
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">Reason / Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <textarea
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Briefly describe your health concern or what you hope to achieve..."
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-gold resize-none"
+                  />
+                </div>
+
+                {formError && (
+                  <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {formError}
+                  </div>
+                )}
+
+                <div className="bg-light-olive/40 border border-sage/30 rounded-xl p-4 mb-5 text-sm space-y-1">
+                  <p className="font-semibold text-gray-800 mb-2">Booking Summary</p>
+                  <p className="text-gray-600"><span className="text-gray-400">Provider:</span> {provider.name}</p>
+                  <p className="text-gray-600"><span className="text-gray-400">Date:</span> {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <p className="text-gray-600"><span className="text-gray-400">Time:</span> {selectedTime}</p>
+                  <p className="text-gray-600"><span className="text-gray-400">Type:</span> {sessionType}</p>
+                  <p className="font-semibold text-primary mt-2">{formatCurrency(provider.session_price)}</p>
+                </div>
+
+                <Button
+                  fullWidth
+                  size="lg"
+                  onClick={handleBook}
+                  loading={loading}
+                  disabled={!user || !contactName.trim() || !contactPhone.trim() || !contactEmail.trim()}
+                >
+                  {!user ? 'Sign In to Book' : 'Confirm Booking'}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

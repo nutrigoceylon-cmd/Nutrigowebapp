@@ -142,7 +142,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-white/10 pt-6 text-center">
-          <p className="text-white/30 text-sm">© 2026 NutriGo (Pvt) Ltd. All rights reserved.</p>
+          <p className="text-white/30 text-sm">© 2026 NutriGo Ceylon (Pvt) Ltd. All rights reserved.</p>
         </div>
       </div>
     </footer>

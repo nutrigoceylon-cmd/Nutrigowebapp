@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { PublicLayout } from './components/layout/PublicLayout'
 import { AdminLayout } from './components/layout/AdminLayout'
@@ -51,9 +52,17 @@ function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
+
 function AppRoutes() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       {/* Public routes */}
       <Route path="/" element={<PublicPage><Home /></PublicPage>} />
       <Route path="/about" element={<PublicPage><About /></PublicPage>} />
@@ -162,6 +171,7 @@ function AppRoutes() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }
 

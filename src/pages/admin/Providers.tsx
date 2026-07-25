@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, Power } from 'lucide-react'
-import type { Provider, ProviderSpecialty } from '../../types'
+import { Plus, Pencil, Trash2, Power, X } from 'lucide-react'
+import type { Provider, ProviderSpecialty, TimeSlot } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { ImageUpload } from '../../components/ui/ImageUpload'
 import { Table } from '../../components/ui/Table'
@@ -13,10 +13,14 @@ import { getProviderSpecialtyLabel, normalizeProviderSpecialty, providerSpecialt
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+const defaultTimeSlots: TimeSlot[] = [
+  { label: 'Morning', from: '09:00', to: '12:00' },
+]
+
 const defaultForm = {
   name: '', title: '', specialty: 'dietician' as ProviderSpecialty,
   bio: '', image_url: '', session_price: 50, session_duration: 60,
-  available_days: [1, 2, 3, 4, 5], available_from: '09:00', available_to: '17:00',
+  available_days: [1, 2, 3, 4, 5], time_slots: defaultTimeSlots,
   languages: 'English', qualifications: '',
 }
 
@@ -45,8 +49,9 @@ export function AdminProviders() {
       name: p.name, title: p.title, specialty: normalizeProviderSpecialty(p.specialty),
       bio: p.bio ?? '', image_url: p.image_url ?? '',
       session_price: p.session_price, session_duration: p.session_duration,
-      available_days: p.available_days, available_from: p.available_from,
-      available_to: p.available_to, languages: p.languages.join(', '),
+      available_days: p.available_days,
+      time_slots: (p.time_slots && p.time_slots.length > 0) ? p.time_slots : defaultTimeSlots,
+      languages: p.languages.join(', '),
       qualifications: p.qualifications.join(', '),
     })
     setModalOpen(true)
@@ -57,8 +62,7 @@ export function AdminProviders() {
       name: form.name, title: form.title, specialty: form.specialty,
       bio: form.bio, image_url: form.image_url,
       session_price: form.session_price, session_duration: form.session_duration,
-      available_days: form.available_days, available_from: form.available_from,
-      available_to: form.available_to,
+      available_days: form.available_days, time_slots: form.time_slots,
       languages: form.languages.split(',').map(s => s.trim()).filter(Boolean),
       qualifications: form.qualifications.split(',').map(s => s.trim()).filter(Boolean),
     }
@@ -175,9 +179,69 @@ export function AdminProviders() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Available From" type="time" value={form.available_from} onChange={e => setForm(f => ({ ...f, available_from: e.target.value }))} />
-            <Input label="Available To" type="time" value={form.available_to} onChange={e => setForm(f => ({ ...f, available_to: e.target.value }))} />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-700">Time Slots</label>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, time_slots: [...(f.time_slots ?? []), { label: '', from: '09:00', to: '17:00' }] }))}
+                className="flex items-center gap-1 text-xs text-primary hover:text-secondary font-medium cursor-pointer"
+              >
+                <Plus size={13} /> Add Slot
+              </button>
+            </div>
+            <div className="space-y-2">
+              {(form.time_slots ?? []).map((slot, i) => (
+                <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                  <Input
+                    label={i === 0 ? 'Label' : undefined}
+                    value={slot.label}
+                    onChange={e => setForm(f => {
+                      const ts = [...(f.time_slots ?? [])]
+                      ts[i] = { ...ts[i], label: e.target.value }
+                      return { ...f, time_slots: ts }
+                    })}
+                    placeholder="e.g. Morning"
+                  />
+                  <div>
+                    {i === 0 && <label className="text-sm font-medium text-gray-700 block mb-1.5">From</label>}
+                    <input
+                      type="time"
+                      value={slot.from}
+                      onChange={e => setForm(f => {
+                        const ts = [...(f.time_slots ?? [])]
+                        ts[i] = { ...ts[i], from: e.target.value }
+                        return { ...f, time_slots: ts }
+                      })}
+                      className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    {i === 0 && <label className="text-sm font-medium text-gray-700 block mb-1.5">To</label>}
+                    <input
+                      type="time"
+                      value={slot.to}
+                      onChange={e => setForm(f => {
+                        const ts = [...(f.time_slots ?? [])]
+                        ts[i] = { ...ts[i], to: e.target.value }
+                        return { ...f, time_slots: ts }
+                      })}
+                      className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className={i === 0 ? 'mt-6' : ''}>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, time_slots: (f.time_slots ?? []).filter((_, j) => j !== i) }))}
+                      disabled={(form.time_slots ?? []).length === 1}
+                      className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <Input label="Languages (comma-separated)" value={form.languages} onChange={e => setForm(f => ({ ...f, languages: e.target.value }))} placeholder="English, Sinhala, Tamil" />
           <Input label="Qualifications (comma-separated)" value={form.qualifications} onChange={e => setForm(f => ({ ...f, qualifications: e.target.value }))} placeholder="BSc Nutrition, MSc Dietetics, RD" />

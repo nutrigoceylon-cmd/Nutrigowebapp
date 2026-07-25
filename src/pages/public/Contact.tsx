@@ -43,10 +43,10 @@ export function Contact() {
             <h2 className="font-serif text-xl font-bold text-primary mb-6">Contact Information</h2>
             <div className="space-y-5">
               {[
-                { icon: Mail, label: 'Email', value: 'hello@nutrigo.com' },
-                { icon: Phone, label: 'Phone', value: '071 413 9923' },
+                { icon: Mail, label: 'Email', value: 'info@nutrigocyelon.com' },
+                { icon: Phone, label: 'Phone', value: '074 413 9923' },
                 { icon: MapPin, label: 'Address', value: '103/J, Sunflower Garden, Kahathuduwa, Polgasowita' },
-                { icon: Clock, label: 'Support Hours', value: 'Mon–Sat, 8 AM – 6 PM PST' },
+                { icon: Clock, label: 'Support Hours', value: 'Tue–Sun, 8 AM – 10 PM' },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex gap-4">
                   <div className="w-10 h-10 bg-light-olive rounded-xl flex items-center justify-center flex-shrink-0">

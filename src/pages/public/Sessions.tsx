@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, DollarSign, Star, Globe, Award } from 'lucide-react'
+import { Clock, Star, Globe, Award } from 'lucide-react'
 import type { Provider } from '../../types'
 import { supabase } from '../../lib/supabase'
-import { formatCurrency } from '../../lib/helpers'
 import { getProviderSpecialtyLabel, normalizeProviderSpecialty, providerSpecialties, providerSpecialtyColors } from '../../lib/providers'
 
 const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -103,17 +102,19 @@ export function Sessions() {
                 )}
 
                 <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <DollarSign size={13} className="text-gold flex-shrink-0" />
-                    <span className="font-semibold text-gray-700">{formatCurrency(provider.session_price)}</span>
-                    <span>/ {provider.session_duration} min session</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Clock size={13} className="text-gold flex-shrink-0" />
-                    <span>
-                      {provider.available_days.map(d => DAY_NAMES[d]).join(', ')}
-                      {' · '}{provider.available_from}–{provider.available_to}
-                    </span>
+                  <div className="flex items-start gap-2 text-xs text-gray-500">
+                    <Clock size={13} className="text-gold flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span>{provider.available_days.map(d => DAY_NAMES[d]).join(', ')}</span>
+                      <div className="flex flex-wrap gap-x-2">
+                        {(provider.time_slots ?? []).map((slot, i) => (
+                          <span key={i}>
+                            {slot.label && <span className="text-gray-400">{slot.label}: </span>}
+                            {slot.from}–{slot.to}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   {provider.languages.length > 0 && (
                     <div className="flex items-center gap-2 text-xs text-gray-500">
