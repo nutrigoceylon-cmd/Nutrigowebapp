@@ -37,8 +37,8 @@ export function deriveMealCategory(meal: Pick<Meal, 'category' | 'name' | 'descr
   if (haystack.includes('salad')) return 'salads'
   if (haystack.includes('drink') || haystack.includes('juice') || haystack.includes('smoothie') || haystack.includes('tea') || haystack.includes('coffee')) return 'drinks'
   if (haystack.includes('sandwich') || haystack.includes('wrap') || haystack.includes('burger')) return 'sandwiches'
-  if (haystack.includes('oats') || haystack.includes('oat') || haystack.includes('granola') || haystack.includes('bowl')) return 'oates-bowls'
-  if (haystack.includes('soup') || haystack.includes('broth')) return 'soup'
+  if (haystack.includes('oats') || haystack.includes('oat') || haystack.includes('granola') || haystack.includes('bowl')) return 'oats-bowls'
+  if (haystack.includes('soup') || haystack.includes('broth')) return 'soups'
 
   return 'mains'
 }
