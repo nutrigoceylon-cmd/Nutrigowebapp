@@ -94,7 +94,7 @@ export function Footer() {
                 { to: '/faq', label: 'Delivery & Areas' },
                 { to: '/faq', label: 'Returns & Refunds' },
                 { to: '/faq', label: 'Terms & Conditions' },
-                { to: '/faq', label: 'Privacy Policy' },
+                { to: '/privacy-policy', label: 'Privacy Policy' },
               ].map((link, i) => (
                 <li key={i}>
                   <Link to={link.to} className="text-white/50 hover:text-white text-sm transition-colors">
