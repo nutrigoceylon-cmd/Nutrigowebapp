@@ -17,6 +17,7 @@ import { ArticleDetail } from './pages/public/ArticleDetail'
 import { Podcast } from './pages/public/Podcast'
 import { Events } from './pages/public/Events'
 import { FAQ } from './pages/public/FAQ'
+import { PrivacyPolicy } from './pages/public/PrivacyPolicy'
 import { Login } from './pages/public/Login'
 import { SignUp } from './pages/public/SignUp'
 import { Dashboard } from './pages/public/Dashboard'
@@ -78,6 +79,7 @@ function AppRoutes() {
       <Route path="/podcast" element={<PublicPage><Podcast /></PublicPage>} />
       <Route path="/events" element={<PublicPage><Events /></PublicPage>} />
       <Route path="/faq" element={<PublicPage><FAQ /></PublicPage>} />
+      <Route path="/privacy-policy" element={<PublicPage><PrivacyPolicy /></PublicPage>} />
       <Route path="/contact" element={<PublicPage><Contact /></PublicPage>} />
       <Route path="/sessions" element={<PublicPage><Sessions /></PublicPage>} />
       <Route path="/sessions/:id" element={<PublicPage><SessionDetail /></PublicPage>} />
